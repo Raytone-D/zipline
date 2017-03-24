@@ -2,7 +2,6 @@
 from __future__ import print_function
 from contextlib import contextmanager
 from glob import glob
-from path import path
 import os
 from os.path import abspath, basename, dirname, exists, isfile
 from shutil import move, rmtree
@@ -32,38 +31,42 @@ def ensure_not_exists(path):
 
 
 def main():
+    old_dir = os.getcwd()
     print("Moving to %s." % HERE)
-    with path(HERE):
-        print("Building docs with 'make html'")
-        check_call(['make', 'html'])
+    os.chdir(HERE)
 
-        print("Clearing temp location '%s'" % TEMP_LOCATION)
-        rmtree(TEMP_LOCATION, ignore_errors=True)
+    print("Building docs with 'make html'")
+    check_call(['make', 'html'])
 
-        with removing(TEMP_LOCATION):
-            print("Copying built files to temp location.")
-            move('build/html', TEMP_LOCATION)
+    print("Clearing temp location '%s'" % TEMP_LOCATION)
+    rmtree(TEMP_LOCATION, ignore_errors=True)
 
-            print("Moving to '%s'" % ZIPLINE_ROOT)
-            os.chdir(ZIPLINE_ROOT)
+    with removing(TEMP_LOCATION):
+        print("Copying built files to temp location.")
+        move('build/html', TEMP_LOCATION)
 
-            print("Checking out gh-pages branch.")
-            check_call(
-                [
-                    'git', 'branch', '-f',
-                    '--track', 'gh-pages', 'origin/gh-pages'
-                ]
-            )
-            check_call(['git', 'checkout', 'gh-pages'])
-            check_call(['git', 'reset', '--hard', 'origin/gh-pages'])
+        print("Moving to '%s'" % ZIPLINE_ROOT)
+        os.chdir(ZIPLINE_ROOT)
 
-            print("Copying built files:")
-            for file_ in glob(TEMP_LOCATION_GLOB):
-                base = basename(file_)
+        print("Checking out gh-pages branch.")
+        check_call(
+            [
+                'git', 'branch', '-f',
+                '--track', 'gh-pages', 'origin/gh-pages'
+            ]
+        )
+        check_call(['git', 'checkout', 'gh-pages'])
+        check_call(['git', 'reset', '--hard', 'origin/gh-pages'])
 
-                print("%s -> %s" % (file_, base))
-                ensure_not_exists(base)
-                move(file_, '.')
+        print("Copying built files:")
+        for file_ in glob(TEMP_LOCATION_GLOB):
+            base = basename(file_)
+
+            print("%s -> %s" % (file_, base))
+            ensure_not_exists(base)
+            move(file_, '.')
+
+    os.chdir(old_dir)
 
     print()
     print("Updated documentation branch in directory %s" % ZIPLINE_ROOT)
