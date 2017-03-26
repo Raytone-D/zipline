@@ -1422,14 +1422,22 @@ class TradingAlgorithm(object):
 
     def _calculate_order(self, asset, amount,
                          limit_price=None, stop_price=None, style=None):
-        # Truncate to the integer share count that's either within .0001 of
-        # amount or closer to zero.
-        # E.g. 3.9999 -> 4.0; 5.5 -> 5.0; -5.5 -> -5.0
-        amount = int(round_if_near_integer(amount))
+        if asset in self.portfolio.positions:
+            current_position_size = self.portfolio.positions[asset]
+        else:
+            current_position_size = 0
+
+        # We want to round the target position towards 0 to prevent
+        # ordering more than we expected.
+        new_target_position_size = round_if_near_integer(
+            current_position_size + amount
+        )
+
+        amount_to_order = new_target_position_size - current_position
 
         # Raises a ZiplineError if invalid parameters are detected.
         self.validate_order_params(asset,
-                                   amount,
+                                   amount_to_order,
                                    limit_price,
                                    stop_price,
                                    style)
@@ -1439,7 +1447,7 @@ class TradingAlgorithm(object):
         style = self.__convert_order_params_for_blotter(limit_price,
                                                         stop_price,
                                                         style)
-        return amount, style
+        return amount_to_order, style
 
     def validate_order_params(self,
                               asset,
